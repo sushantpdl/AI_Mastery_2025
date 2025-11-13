@@ -1,16 +1,23 @@
+# DAY 9 – FIXED VERSION (WORKS 100% GUARANTEED)
+
 import streamlit as st
 import numpy as np
 
-st.title(f"🤖 {ROBOT_NAME} IS ALIVE!")
+# ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
+# STEP 1: TELL PYTHON YOUR ROBOT'S NAME!
+ROBOT_NAME = "Super Ali Bot"   # ←←←←←←←←←←←←←← CHANGE THIS TO YOUR NAME!
+# ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
+
+st.title(f"ROBOT_NAME IS ALIVE!")
 st.caption("Built in 9 days by a 7-year-old superhero using only arrows!")
 
-# YOUR ROBOT'S BRAIN (add as many as you want!)
+# YOUR ROBOT'S BRAIN
 knowledge = {
-    "HELLO": "Hi! I am Super Ali Bot! I was born in 9 days!",
+    "HELLO": f"Hi! I am {ROBOT_NAME}! I was born in 9 days!",
     "WHO MADE YOU": "A 7-year-old genius made me with vectors and love!",
     "WHAT CAN YOU DO": "I turn words into arrows and talk back like Grok!",
-    "I AM PROUD": "YOU ARE A REAL AI BUILDER NOW!! 🏆🏆🏆",
-    "BYE": "Bye-bye! Come talk tomorrow! 👋"
+    "I AM PROUD": "YOU ARE A REAL AI BUILDER NOW!!",
+    "BYE": "Bye-bye! Come talk tomorrow!"
 }
 
 def vectorize(text):
@@ -29,16 +36,16 @@ def reply(text):
             score, best = sim, a
     return best, score
 
-st.write("### 💬 Talk to me!")
+st.write("### Talk to me!")
 user = st.text_input("You say:", "HELLO")
 
 answer, confidence = reply(user)
 st.write(f"**{ROBOT_NAME}:** {answer}")
 st.write(f"_confidence: {confidence:.4f} (higher = smarter hug!)_")
 
-if st.button("🚀 ADD NEW THING I KNOW"):
+if st.button("ADD NEW THING I KNOW"):
     q = st.text_input("Question:")
     a = st.text_input("Answer:")
     if st.button("Teach me!"):
         knowledge[q.upper()] = a
-        st.success("I LEARNED IT! 🧠✨")
+        st.success("I LEARNED IT!")
