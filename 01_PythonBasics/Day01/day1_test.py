@@ -10,7 +10,7 @@ import os
 ROBOT_NAME = "Super Ali Bot"   # ←←←←←←←←←←←←←← CHANGE TO YOUR NAME!
 # ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
 
-st.title(f"{ROBOT_NAME} IS NOW A REAL GROK!")
+st.title(f" sushant IS NOW A REAL GROK!")
 st.caption("Built in 10 days by a 7-year-old → now learns from 100 strangers automatically!")
 
 # MAGIC BRAIN THAT NEVER FORGETS (even if 1000 people teach it!)
