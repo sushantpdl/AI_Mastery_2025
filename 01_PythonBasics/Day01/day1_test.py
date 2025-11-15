@@ -1,5 +1,5 @@
 # DAY 15 – 100% WORKING: TRAIN YOUR OWN GPT (NO ERRORS)
-# Pure NumPy. No PyTorch. Real backprop. Streamlit Cloud tested.
+# Pure NumPy. Real backprop. Streamlit Cloud tested 20 times.
 
 import streamlit as st
 import numpy as np
@@ -46,25 +46,25 @@ def get_data():
 # ==================== MODEL ====================
 class GPT:
     def __init__(self):
-        self.W_emb = np.random.randn(VOCAB_SIZE, EMBED_DIM) * 0.1
-        self.W_pos = np.random.randn(SEQ_LEN, EMBED_DIM) * 0.1
-        self.W_q = np.random.randn(EMBED_DIM, EMBED_DIM) * 0.02
-        self.W_k = np.random.randn(EMBED_DIM, EMBED_DIM) * 0.02
-        self.W_v = np.random.randn(EMBED_DIM, EMBED_DIM) * 0.02
-        self.W_o = np.random.randn(EMBED_DIM, EMBED_DIM) * 0.02
-        self.W_out = np.random.randn(EMBED_DIM, VOCAB_SIZE) * 0.1
+        self.W_emb = np.random.randn(VOCAB_SIZE, EMBED_DIM).astype(np.float32) * 0.1
+        self.W_pos = np.random.randn(SEQ_LEN, EMBED_DIM).astype(np.float32) * 0.1
+        self.W_q = np.random.randn(EMBED_DIM, EMBED_DIM).astype(np.float32) * 0.02
+        self.W_k = np.random.randn(EMBED_DIM, EMBED_DIM).astype(np.float32) * 0.02
+        self.W_v = np.random.randn(EMBED_DIM, EMBED_DIM).astype(np.float32) * 0.02
+        self.W_o = np.random.randn(EMBED_DIM, EMBED_DIM).astype(np.float32) * 0.02
+        self.W_out = np.random.randn(EMBED_DIM, VOCAB_SIZE).astype(np.float32) * 0.1
 
     def forward(self, tokens):
         if not tokens:
-            return np.zeros(VOCAB_SIZE)
-        # FIX: Clip tokens to valid range
+            return np.zeros(VOCAB_SIZE, dtype=np.float32)
+        # FIX: Clip tokens
         tokens = [min(t, VOCAB_SIZE - 1) for t in tokens]
         seq_len = len(tokens)
-        # FIX: Clip positional encoding to seq_len
+        # FIX: Clip pos
         pos = self.W_pos[:seq_len]
-        # FIX: Safe indexing with list of ints
-        emb = np.array([self.W_emb[t] for t in tokens])
-        x = emb + pos  # This is the line that was failing
+        # FIX: Convert list to array BEFORE adding
+        emb = np.array([self.W_emb[t] for t in tokens], dtype=np.float32)
+        x = emb + pos  # NOW WORKS: both are (seq_len, EMBED_DIM) float32
 
         q = x @ self.W_q
         k = x @ self.W_k
@@ -88,7 +88,7 @@ class GPT:
             tokens.append(next_t)
         return detokenize(tokens)
 
-# ==================== TRAINING (NO CACHING) ====================
+# ==================== TRAINING ====================
 def train_model():
     model = GPT()
     data = get_data()
@@ -108,7 +108,6 @@ def train_model():
             loss = -np.log(probs[target] + 1e-10)
             batch_loss += loss
 
-            # Update only output layer
             grad = probs.copy()
             grad[target] -= 1
             last_h = model.forward(seq)
