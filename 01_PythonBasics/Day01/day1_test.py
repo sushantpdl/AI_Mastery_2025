@@ -82,7 +82,8 @@ class GPT:
         self.W_out = np.random.randn(EMBED_DIM, VOCAB_SIZE).astype(np.float32) * 0.1
 
     def forward(self, tokens):
-        if not tokens: return np.zeros(VOCAB_SIZE, dtype=np.float32), None
+        if not tokens:
+            return np.zeros(VOCAB_SIZE, dtype=np.float32), None
         tokens = [min(t, VOCAB_SIZE - 1) for t in tokens]
         seq_len = min(len(tokens), SEQ_LEN)
         emb = np.array([self.W_emb[t] for t in tokens[:seq_len]], dtype=np.float32)
@@ -109,7 +110,8 @@ class GPT:
             probs /= (probs.sum() + 1e-8)
             next_t = np.random.choice(len(probs), p=probs)
             tokens.append(next_t)
-            if len(tokens) > SEQ_LEN: tokens = tokens[-SEQ_LEN:]
+            if len(tokens) > SEQ_LEN:
+                tokens = tokens[-SEQ_LEN:]
         return detokenize(tokens)
 
 def train_model(data):
@@ -122,40 +124,55 @@ def train_model(data):
         for _ in range(12):
             i = np.random.randint(len(data))
             seq, target = data[i]
-            if not seq: continue
+            if not seq:
+                continue
 
             logits, cache = model.forward(seq)
             x, q, k, v, attn, out = cache
 
-            # Softmax
+            # Softmax + loss
             probs = np.exp(logits - np.max(logits))
             probs /= (probs.sum() + 1e-8)
             loss = -np.log(probs[target] + 1e-10)
             batch_loss += loss
 
-            # === FULL BACKPROP (ONE LINE EACH) ===
-            grad = probs.copy(); grad[target] -= 1
-            dW_out = np.outer(out[-1], grad); model.W_out -= LEARNING_RATE * dW_out
-            dout = grad @ model.W_out.T; dout = dout.reshape(1, -1)
-            dW_o = out.T @ dout; model.W_o -= LEARNING_RATE * dW_o
+            # === FULL BACKPROP (EACH LINE SEPARATE) ===
+            grad = probs.copy()
+            grad[target] -= 1
+
+            # W_out
+            dW_out = np.outer(out[-1], grad)
+            model.W_out -= LEARNING_RATE * dW_out
+
+            # W_o
+            dout = grad @ model.W_out.T
+            dout = dout.reshape(1, -1)
+            dW_o = out.T @ dout
+            model.W_o -= LEARNING_RATE * dW_o
+
+            # Attention
             dv = (attn.T @ dout).squeeze(1)
             dattn = dout @ v.T
             dattn -= attn * dattn.sum(axis=1, keepdims=True)
             dscores = dattn * attn
-            dq = dscores @ k; dk = dscores.T @ q
+            dq = dscores @ k
+            dk = dscores.T @ q
             model.W_q -= LEARNING_RATE * (x.T @ dq)
             model.W_k -= LEARNING_RATE * (x.T @ dk)
             model.W_v -= LEARNING_RATE * (x.T @ dv)
+
+            # Embedding + pos
             dx = dq @ model.W_q.T + dk @ model.W_k.T + dv @ model.W_v.T
             for j, t in enumerate(seq):
                 if j < SEQ_LEN:
                     model.W_emb[t] -= LEARNING_RATE * dx[j]
                     model.W_pos[j] -= LEARNING_RATE * dx[j]
 
-        losses.append(batch_loss / 12)
+        avg_loss = batch_loss / 12
+        losses.append(avg_loss)
         progress.progress(step / 800)
         if step % 100 == 0:
-            st.write(f"**Step {step} → Loss: {losses[-1]:.3f}**")
+            st.write(f"**Step {step} → Loss: {avg_loss:.3f}**")
 
     return model, losses
 
