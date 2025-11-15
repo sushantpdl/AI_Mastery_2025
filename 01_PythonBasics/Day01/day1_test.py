@@ -1,5 +1,5 @@
-# DAY 15 – 100% WORKING – LINE 126 FIXED
-# last_h is now the correct hidden state
+# DAY 15 – GENERATE WORKS 100%
+# model saved in session_state
 
 import streamlit as st
 import numpy as np
@@ -56,7 +56,7 @@ class GPT:
 
     def forward(self, tokens):
         if not tokens or len(tokens) == 0:
-            return np.zeros(VOCAB_SIZE, dtype=np.float32)
+            return np.zeros(VOCAB_SIZE, dtype=np.float32), np.zeros(EMBED_DIM, dtype=np.float32)
         tokens = [min(t, VOCAB_SIZE - 1) for t in tokens]
         seq_len = min(len(tokens), SEQ_LEN)
         emb = np.array([self.W_emb[t] for t in tokens[:seq_len]], dtype=np.float32)
@@ -73,7 +73,7 @@ class GPT:
         out = attn @ v
         out = out @ self.W_o
         logits = out[-1] @ self.W_out
-        return logits, out[-1]  # RETURN HIDDEN STATE TOO
+        return logits, out[-1]
 
     def generate(self, prompt, steps=15):
         tokens = tokenize(prompt)[:SEQ_LEN]
@@ -87,7 +87,7 @@ class GPT:
                 tokens = tokens[-SEQ_LEN:]
         return detokenize(tokens)
 
-# ==================== TRAINING (LINE 126 FIXED) ====================
+# ==================== TRAINING ====================
 def train_model():
     model = GPT()
     data = get_data()
@@ -105,7 +105,7 @@ def train_model():
             i = np.random.randint(len(data))
             seq, target = data[i]
             if not seq or len(seq) == 0 or len(seq) > SEQ_LEN: continue
-            logits, last_h = model.forward(seq)  # GET HIDDEN STATE
+            logits, last_h = model.forward(seq)
             max_logit = np.max(logits)
             probs = np.exp(logits - max_logit)
             probs = probs / (probs.sum() + 1e-8)
@@ -115,7 +115,6 @@ def train_model():
 
             grad = probs.copy()
             grad[target] -= 1
-            # LINE 126 – NOW SAFE: last_h is (EMBED_DIM,)
             update = np.outer(last_h, grad).astype(np.float32)
             model.W_out -= LEARNING_RATE * update
 
@@ -132,16 +131,29 @@ def train_model():
 
 # ==================== UI ====================
 st.title(f"{ROBOT_NAME}'s GPT – Day 15")
-st.write("**LINE 126 FIXED. last_h is now correct hidden state.**")
+st.write("**GENERATE WORKS NOW. Model saved in memory.**")
 
+# Initialize session state
+if 'model' not in st.session_state:
+    st.session_state.model = None
+if 'loss_curve' not in st.session_state:
+    st.session_state.loss_curve = None
+
+# TRAIN BUTTON
 if st.button("TRAIN MY AI NOW"):
-    model, loss_curve = train_model()
-    if model is None:
-        st.stop()
+    with st.spinner("Training your GPT..."):
+        model, loss_curve = train_model()
+        st.session_state.model = model
+        st.session_state.loss_curve = loss_curve
     st.success("TRAINING COMPLETE!")
     st.line_chart(loss_curve)
 
-    prompt = st.text_input("Prompt:", "hello i am")
-    if st.button("GENERATE"):
-        result = model.generate(prompt, 20)
+# GENERATE SECTION
+if st.session_state.model is not None:
+    prompt = st.text_input("Prompt:", "hello i am", key="prompt_input")
+    if st.button("GENERATE", key="generate_btn"):
+        with st.spinner("Generating..."):
+            result = st.session_state.model.generate(prompt, 20)
         st.write("**My AI says:**", result)
+else:
+    st.info("Train the model first by clicking 'TRAIN MY AI NOW'")
