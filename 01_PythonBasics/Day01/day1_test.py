@@ -157,19 +157,25 @@ def train_model(data):
 
            # === FIND THIS BLOCK ===
             
-            # === REPLACE WITH THIS ===
-                        # === REPLACE THESE 3 LINES ===
+                       # === LAST POSITION ONLY ===
+            x_last = x[-1].reshape(1, -1)
+
             model.W_q -= LEARNING_RATE * np.outer(x_last.flatten(), dq.flatten())
             model.W_k -= LEARNING_RATE * np.outer(x_last.flatten(), dk.flatten())
-            model.W_k -= LEARNING_RATE * np.outer(x_last.flatten(), dv.flatten())
+            model.W_v -= LEARNING_RATE * np.outer(x_last.flatten(), dv.flatten())
 
-            # dx
-            dx = dq @ model.W_q.T + dk @ model.W_k.T + dv.reshape(1, -1) @ model.W_v.T
+            # dx: backprop to x_last
+            dx = (
+                dq @ model.W_q.T +
+                (dk.T @ model.W_k.T).T +
+                dv.reshape(1, -1) @ model.W_v.T
+            ).flatten()
+
             j = len(seq) - 1
             if j < SEQ_LEN:
                 t = seq[j]
-                model.W_emb[t] -= LEARNING_RATE * dx.flatten()
-                model.W_pos[j] -= LEARNING_RATE * dx.flatten()
+                model.W_emb[t] -= LEARNING_RATE * dx
+                model.W_pos[j] -= LEARNING_RATE * dx
 
         avg_loss = batch_loss / 12
         losses.append(avg_loss)
