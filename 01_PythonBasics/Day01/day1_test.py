@@ -1,4 +1,4 @@
-# DAY 15 – FINAL – 100% WORKING – NO ERRORS
+# DAY 15 – FINAL – 100% WORKING – NO TYPOS
 import streamlit as st
 import numpy as np
 import re
@@ -40,7 +40,7 @@ def get_default_data():
     ]
     data = []
     for s in base * 35:
-        t =_tokenize(s)
+        t = tokenize(s)  # FIXED: tokenize, not _tokenize
         if len(t) < 2: continue
         t = t[:SEQ_LEN]
         for i in range(1, len(t)):
@@ -149,16 +149,16 @@ def train_model(data):
             st.write(f"**Step {step} → Loss: {avg_loss:.3f}**")
     return model, losses
 
-# ==================== UI – ONLY RUN ON BUTTON CLICK ====================
+# ==================== UI ====================
 st.title(f"{ROBOT_NAME}'s GPT – Day 15")
-st.markdown("**LINE 164 FIXED – ONLY RUN ON BUTTON**")
+st.markdown("**_tokenize FIXED → tokenize**")
 
 uploaded_file = st.file_uploader("Upload my_corpus.txt (optional)", type="txt")
 
 if st.button("TRAIN MY AI NOW"):
-    data = get_data(uploaded_file)  # data defined here
+    data = get_data(uploaded_file)
     with st.spinner("Training 800 steps..."):
-        model, loss_curve = train_model(data)  # LINE 164 – ONLY HERE
+        model, loss_curve = train_model(data)
         st.session_state.model = model
         st.session_state.loss_curve = loss_curve
     st.success("TRAINING COMPLETE!")
