@@ -57,14 +57,14 @@ class GPT:
     def forward(self, tokens):
         if not tokens:
             return np.zeros(VOCAB_SIZE)
-        # FIX: Ensure tokens is a list of valid indices
+        # FIX: Clip tokens to valid range
         tokens = [min(t, VOCAB_SIZE - 1) for t in tokens]
         seq_len = len(tokens)
-        # FIX: Clip positional encoding
+        # FIX: Clip positional encoding to seq_len
         pos = self.W_pos[:seq_len]
-        # FIX: Safe indexing
-        emb = self.W_emb[tokens]
-        x = emb + pos
+        # FIX: Safe indexing with list of ints
+        emb = np.array([self.W_emb[t] for t in tokens])
+        x = emb + pos  # This is the line that was failing
 
         q = x @ self.W_q
         k = x @ self.W_k
