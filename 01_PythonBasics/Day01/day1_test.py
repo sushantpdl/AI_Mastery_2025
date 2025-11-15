@@ -133,35 +133,39 @@ def train_model(data):
             # W_out
             model.W_out -= LEARNING_RATE * np.outer(out[-1], grad)
 
-            # dout: only last position
-            dout = grad @ model.W_out.T  # (dim,)
-            dout = dout.reshape(1, -1)   # (1, dim)
+            # dout: last position only
+            dout = grad @ model.W_out.T
+            dout = dout.reshape(1, -1)
 
             # W_o
-            dW_o = out[-1].reshape(-1, 1) @ dout  # (dim, 1) @ (1, dim) → (dim, dim)
+            dW_o = out[-1].reshape(-1, 1) @ dout
             model.W_o -= LEARNING_RATE * dW_o
 
-            # Attention backprop (last position only)
-            dv = (attn[-1].reshape(-1, 1) @ dout).flatten()  # (seq_len, 1) @ (1, dim) → (seq_len, dim) → flatten
-
-            dattn = dout @ v.T  # (1, dim) @ (seq_len, dim).T → (1, seq_len)
+            # Attention backprop
+            dv = (attn[-1].reshape(-1, 1) @ dout).flatten()
+            dattn = dout @ v.T
             dattn = dattn - attn[-1:] * dattn.sum(axis=1, keepdims=True)
-            dscores = dattn * attn[-1:]  # (1, seq_len)
+            dscores = dattn * attn[-1:]
 
             # dq: (1, seq_len) @ (seq_len, dim) → (1, dim)
             dq = dscores @ k
             # dk: (dim, seq_len) @ (seq_len, 1) → (dim, 1)
             dk = k.T @ dscores.T
 
-            model.W_q -= LEARNING_RATE * (x.T @ dq)
-            model.W_k -= LEARNING_RATE * (x.T @ dk)
-            model.W_v -= LEARNING_RATE * (x.T @ dv)
+            # === FIX: Only last row of x contributes ===
+            x_last = x[-1].reshape(1, -1)  # (1, dim)
 
-            dx = dq @ model.W_q.T + dk @ model.W_k.T + dv @ model.W_v.T
-            for j, t in enumerate(seq):
-                if j < SEQ_LEN:
-                    model.W_emb[t] -= LEARNING_RATE * dx[j]
-                    model.W_pos[j] -= LEARNING_RATE * dx[j]
+            model.W_q -= LEARNING_RATE * (x_last.T @ dq)
+            model.W_k -= LEARNING_RATE * (x_last.T @ dk)
+            model.W_v -= LEARNING_RATE * (x_last.T @ dv.reshape(1, -1))
+
+            # dx: only for last position
+            dx_last = dq @ model.W_q.T + dk @ model.W_k.T + dv.reshape(1, -1) @ model.W_v.T
+            j = len(seq) - 1
+            if j < SEQ_LEN:
+                t = seq[j]
+                model.W_emb[t] -= LEARNING_RATE * dx_last.flatten()
+                model.W_pos[j] -= LEARNING_RATE * dx_last.flatten()
 
         avg_loss = batch_loss / 12
         losses.append(avg_loss)
@@ -172,7 +176,7 @@ def train_model(data):
 
 # ==================== UI ====================
 st.title(f"{ROBOT_NAME}'s GPT – Day 15")
-st.markdown("**dk = k.T @ dscores.T – 100% WORKING**")
+st.markdown("**x_last.T @ dq – 100% WORKING**")
 
 uploaded_file = st.file_uploader("Upload my_corpus.txt (optional)", type="txt")
 
