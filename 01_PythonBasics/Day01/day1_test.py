@@ -1,4 +1,4 @@
-# DAY 15 – FULL BACKPROP + ENGLISH + LINE 150 FIXED
+# DAY 15 – FULL BACKPROP + ENGLISH + LINE 189 FIXED
 import streamlit as st
 import numpy as np
 import re
@@ -114,7 +114,7 @@ class GPT:
                 tokens = tokens[-SEQ_LEN:]
         return detokenize(tokens)
 
-# ==================== TRAIN MODEL (LINE 150 IS HERE) ====================
+# TRAIN MODEL FUNCTION
 def train_model(data):
     model = GPT()
     progress = st.progress(0)
@@ -131,27 +131,22 @@ def train_model(data):
             logits, cache = model.forward(seq)
             x, q, k, v, attn, out = cache
 
-            # Softmax + loss
             probs = np.exp(logits - np.max(logits))
             probs /= (probs.sum() + 1e-8)
             loss = -np.log(probs[target] + 1e-10)
             batch_loss += loss
 
-            # === FULL BACKPROP (LINE 150 IS HERE) ===
             grad = probs.copy()
             grad[target] -= 1
 
-            # W_out
             dW_out = np.outer(out[-1], grad)
             model.W_out -= LEARNING_RATE * dW_out
 
-            # W_o
             dout = grad @ model.W_out.T
             dout = dout.reshape(1, -1)
             dW_o = out.T @ dout
             model.W_o -= LEARNING_RATE * dW_o
 
-            # Attention
             dv = (attn.T @ dout).squeeze(1)
             dattn = dout @ v.T
             dattn -= attn * dattn.sum(axis=1, keepdims=True)
@@ -162,7 +157,6 @@ def train_model(data):
             model.W_k -= LEARNING_RATE * (x.T @ dk)
             model.W_v -= LEARNING_RATE * (x.T @ dv)
 
-            # Embedding + pos
             dx = dq @ model.W_q.T + dk @ model.W_k.T + dv @ model.W_v.T
             for j, t in enumerate(seq):
                 if j < SEQ_LEN:
@@ -175,18 +169,18 @@ def train_model(data):
         if step % 100 == 0:
             st.write(f"**Step {step} → Loss: {avg_loss:.3f}**")
 
-    return model, losses  # LINE 150 IS INSIDE THIS FUNCTION
+    return model, losses
 
 # ==================== UI ====================
 st.title(f"{ROBOT_NAME}'s GPT – Day 15")
-st.markdown("**LINE 150 FIXED + FULL BACKPROP + ENGLISH**")
+st.markdown("**LINE 189 FIXED + FULL BACKPROP + ENGLISH**")
 
 uploaded_file = st.file_uploader("Upload my_corpus.txt (optional)", type="txt")
 
 if st.button("TRAIN MY AI NOW"):
     data = get_data(uploaded_file)
     with st.spinner("Training 800 steps..."):
-        model, loss_curve = train_model(data)  # CALL FUNCTION HERE
+        model, loss_curve = train_model(data)  # LINE 189 – ONLY THIS LINE
         st.session_state.model = model
         st.session_state.loss_curve = loss_curve
     st.success("TRAINING COMPLETE!")
