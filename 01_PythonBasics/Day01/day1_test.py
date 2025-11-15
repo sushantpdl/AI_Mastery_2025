@@ -127,7 +127,7 @@ def train_model(data):
             grad = probs.copy(); grad[target] -= 1
             dW_out = np.outer(out[-1], grad); model.W_out -= LEARNING_RATE * dW_out
             dout = grad @ model.W_out.T; dout = dout.reshape(1, -1)
-            dW_o = out.T @ dout; model.W_o -= LEARNING_RATE * dW_o
+            dW_o = out.T @ dout; model.W_o -= LEARNING_RATE * dW_o   # THIS LINE BELONGS HERE
             dv = (attn.T @ dout).squeeze(1)
             dattn = dout @ v.T
             dattn -= attn * dattn.sum(axis=1, keepdims=True)
@@ -148,14 +148,15 @@ def train_model(data):
             st.write(f"**Step {step} → Loss: {avg_loss:.3f}**")
     return model, losses
 
+# ==================== UI – NO BACKPROP HERE ====================
 st.title(f"{ROBOT_NAME}'s GPT – Day 15")
-st.markdown("**100% WORKING – NO ERRORS – FINAL**")
+st.markdown("**100% CLEAN – NO BACKPROP IN UI**")
 
 uploaded_file = st.file_uploader("Upload my_corpus.txt (optional)", type="txt")
 
 if st.button("TRAIN MY AI NOW"):
     data = get_data(uploaded_file)
-    with st.spinner("Training 800 steps..."):
+    with st.spinner("Training..."):
         model, loss_curve = train_model(data)
         st.session_state.model = model
         st.session_state.loss_curve = loss_curve
