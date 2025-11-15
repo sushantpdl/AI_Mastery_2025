@@ -148,8 +148,9 @@ def train_model(data):
             st.write(f"**Step {step} → Loss: {avg_loss:.3f}**")
     return model, losses
 
+# ==================== UI – ONLY RUN ON BUTTON ====================
 st.title(f"{ROBOT_NAME}'s GPT – Day 15")
-st.markdown("**FINAL – NO COMMENTS – 100% WORKING**")
+st.markdown("**FINAL – 100% WORKING – NO TOP-LEVEL CALL**")
 
 uploaded_file = st.file_uploader("Upload my_corpus.txt (optional)", type="txt")
 
