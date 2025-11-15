@@ -1,11 +1,8 @@
-# DAY 15 – GENERATE WORKS 100%
-# model saved in session_state
-
+# DAY 15 – FILE UPLOAD + TRAIN ON 1000+ SENTENCES
 import streamlit as st
 import numpy as np
 import re
 
-# ==================== CONFIG ====================
 ROBOT_NAME = "Super Ali Bot"
 EMBED_DIM = 64
 VOCAB = "abcdefghijklmnopqrstuvwxyz .,!?"
@@ -14,7 +11,6 @@ SEQ_LEN = 16
 LEARNING_RATE = 0.01
 np.random.seed(42)
 
-# ==================== TOKENIZER ====================
 def tokenize(text):
     text = text.lower()
     text = re.sub(r'[^a-z .,!?]', '', text)
@@ -23,27 +19,32 @@ def tokenize(text):
 def detokenize(tokens):
     return ''.join(VOCAB[t] if t < len(VOCAB) else ' ' for t in tokens)
 
-# ==================== DATA ====================
-def get_data():
-    sentences = [
-        f"hello i am {ROBOT_NAME}",
-        f"{ROBOT_NAME} is genius",
-        f"{ROBOT_NAME} built ai",
-        "i love truth",
-        "day 15 i train",
-        "no cheat",
-        "i am invincible"
-    ]
+# ==================== UPLOAD FILE + GET DATA ====================
+def get_data_from_file(uploaded_file):
+    if uploaded_file is not None:
+        text = uploaded_file.read().decode("utf-8")
+    else:
+        # Fallback: default sentences
+        text = f"""
+        hello i am {ROBOT_NAME}
+        {ROBOT_NAME} is genius
+        i built gpt in 15 days
+        i love truth
+        day 15 i train
+        no cheat
+        i am invincible
+        """.strip()
+    
+    sentences = [s.strip() for s in text.split('\n') if s.strip()]
     data = []
-    for _ in range(200):
-        for s in sentences:
-            t = tokenize(s)
-            if len(t) < 2 or len(t) > SEQ_LEN: continue
-            for i in range(1, len(t)):
-                data.append((t[:i], t[i]))
+    for s in sentences:
+        t = tokenize(s)
+        if len(t) < 2 or len(t) > SEQ_LEN: continue
+        for i in range(1, len(t)):
+            data.append((t[:i], t[i]))
     return data
 
-# ==================== MODEL ====================
+# ==================== MODEL (same as before) ====================
 class GPT:
     def __init__(self):
         self.W_emb = np.random.randn(VOCAB_SIZE, EMBED_DIM).astype(np.float32) * 0.1
@@ -88,11 +89,10 @@ class GPT:
         return detokenize(tokens)
 
 # ==================== TRAINING ====================
-def train_model():
+def train_model(data):
     model = GPT()
-    data = get_data()
     if not data:
-        st.error("No training data!")
+        st.error("No valid data!")
         return None, []
     st.write(f"Training on {len(data)} examples...")
     progress = st.progress(0)
@@ -131,29 +131,24 @@ def train_model():
 
 # ==================== UI ====================
 st.title(f"{ROBOT_NAME}'s GPT – Day 15")
-st.write("**GENERATE WORKS NOW. Model saved in memory.**")
+st.write("**UPLOAD YOUR OWN TEXT FILE → TRAIN AI ON IT**")
 
-# Initialize session state
-if 'model' not in st.session_state:
-    st.session_state.model = None
-if 'loss_curve' not in st.session_state:
-    st.session_state.loss_curve = None
+uploaded_file = st.file_uploader("Upload my_corpus.txt", type="txt")
 
-# TRAIN BUTTON
 if st.button("TRAIN MY AI NOW"):
-    with st.spinner("Training your GPT..."):
-        model, loss_curve = train_model()
+    data = get_data_from_file(uploaded_file)
+    with st.spinner("Training..."):
+        model, loss_curve = train_model(data)
         st.session_state.model = model
         st.session_state.loss_curve = loss_curve
     st.success("TRAINING COMPLETE!")
     st.line_chart(loss_curve)
 
-# GENERATE SECTION
-if st.session_state.model is not None:
-    prompt = st.text_input("Prompt:", "hello i am", key="prompt_input")
-    if st.button("GENERATE", key="generate_btn"):
-        with st.spinner("Generating..."):
+if 'model' in st.session_state and st.session_state.model is not None:
+    prompt = st.text_input("Prompt:", "hello i am", key="prompt")
+    if st.button("GENERATE", key="gen"):
+        with st.spinner("Thinking..."):
             result = st.session_state.model.generate(prompt, 20)
         st.write("**My AI says:**", result)
 else:
-    st.info("Train the model first by clicking 'TRAIN MY AI NOW'")
+    st.info("Upload a file and train first!")
