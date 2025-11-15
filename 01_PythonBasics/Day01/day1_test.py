@@ -121,7 +121,7 @@ def train_model(data):
             logits, cache = model.forward(seq)
             x, q, k, v, attn, out = cache
 
-            # Only last position for loss
+            # Softmax
             probs = np.exp(logits - np.max(logits))
             probs /= (probs.sum() + 1e-8)
             loss = -np.log(probs[target] + 1e-10)
@@ -130,27 +130,27 @@ def train_model(data):
             grad = probs.copy()
             grad[target] -= 1
 
-            # W_out: (dim,) @ (vocab,) → outer
+            # === W_out ===
             model.W_out -= LEARNING_RATE * np.outer(out[-1], grad)
 
-            # dout: (1, dim) → only last position
-            dout = grad @ model.W_out.T
-            dout = dout.reshape(1, -1)  # (1, dim)
+            # === W_o: only last position ===
+            dout = grad @ model.W_out.T  # (vocab,) @ (vocab, dim) → (dim,)
+            dout = dout.reshape(1, -1)   # (1, dim)
+            dW_o = out[-1].reshape(-1, 1) @ dout  # (dim, 1) @ (1, dim) → (dim, dim)
+            model.W_o -= LEARNING_RATE * dW_o
 
-            # W_o: (seq_len, dim).T @ (1, dim) → (dim, dim)
-            model.W_o -= LEARNING_RATE * (out.T @ dout)
-
-            # Rest of attention backprop (only last position affects)
-            dv = (attn[-1:].T @ dout).squeeze(1)
+            # === Attention backprop (only last position) ===
+            dv = (attn[-1].reshape(-1, 1) @ dout).flatten()
             dattn = dout @ v.T
-            dattn -= attn[-1:] * dattn.sum(axis=1, keepdims=True)
-            dscores = dattn * attn[-1:]
+            dattn = dattn - attn[-1] * dattn.sum(axis=1, keepdims=True)
+            dscores = dattn * attn[-1]
             dq = dscores @ k
             dk = dscores.T @ q
             model.W_q -= LEARNING_RATE * (x.T @ dq)
             model.W_k -= LEARNING_RATE * (x.T @ dk)
             model.W_v -= LEARNING_RATE * (x.T @ dv)
 
+            # === Embedding + pos ===
             dx = dq @ model.W_q.T + dk @ model.W_k.T + dv @ model.W_v.T
             for j, t in enumerate(seq):
                 if j < SEQ_LEN:
@@ -166,7 +166,7 @@ def train_model(data):
 
 # ==================== UI ====================
 st.title(f"{ROBOT_NAME}'s GPT – Day 15")
-st.markdown("**SHAPE-FIXED BACKPROP – 100% WORKING**")
+st.markdown("**LINE 141 FIXED – SHAPE-PROOF BACKPROP**")
 
 uploaded_file = st.file_uploader("Upload my_corpus.txt (optional)", type="txt")
 
