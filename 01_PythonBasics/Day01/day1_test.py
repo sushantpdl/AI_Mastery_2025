@@ -155,9 +155,12 @@ def train_model(data):
             # === LAST POSITION ONLY ===
             x_last = x[-1].reshape(1, -1)
 
-            model.W_q -= LEARNING_RATE * (x_last.T @ dq)
-            model.W_k -= LEARNING_RATE * (x_last.T @ dk)
-            model.W_v -= LEARNING_RATE * (x_last.T @ dv.reshape(1, -1))
+           # === FIND THIS BLOCK ===
+            
+            # === REPLACE WITH THIS ===
+            model.W_q -= LEARNING_RATE * np.outer(x_last.flatten(), dq.flatten())
+            model.W_k -= LEARNING_RATE * np.outer(x_last.flatten(), dk.flatten())
+            model.W_v -= LEARNING_RATE * np.outer(x_last.flatten(), dv)
 
             # dx
             dx = dq @ model.W_q.T + dk @ model.W_k.T + dv.reshape(1, -1) @ model.W_v.T
