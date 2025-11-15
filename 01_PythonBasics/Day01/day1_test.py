@@ -158,9 +158,10 @@ def train_model(data):
            # === FIND THIS BLOCK ===
             
             # === REPLACE WITH THIS ===
+                        # === REPLACE THESE 3 LINES ===
             model.W_q -= LEARNING_RATE * np.outer(x_last.flatten(), dq.flatten())
             model.W_k -= LEARNING_RATE * np.outer(x_last.flatten(), dk.flatten())
-            model.W_v -= LEARNING_RATE * np.outer(x_last.flatten(), dv)
+            model.W_k -= LEARNING_RATE * np.outer(x_last.flatten(), dv.flatten())
 
             # dx
             dx = dq @ model.W_q.T + dk @ model.W_k.T + dv.reshape(1, -1) @ model.W_v.T
