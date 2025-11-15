@@ -1,4 +1,4 @@
-# DAY 15 – FULL BACKPROP + ENGLISH OUTPUT
+# DAY 15 – FULL BACKPROP + ENGLISH + NO SYNTAX ERROR
 import streamlit as st
 import numpy as np
 import re
@@ -8,7 +8,7 @@ EMBED_DIM = 64
 VOCAB = "abcdefghijklmnopqrstuvwxyz .,!?"
 VOCAB_SIZE = len(VOCAB)
 SEQ_LEN = 16
-LEARNING_RATE = 0.1  # Stronger learning
+LEARNING_RATE = 0.1
 np.random.seed(42)
 
 def tokenize(text):
@@ -19,7 +19,7 @@ def tokenize(text):
 def detokenize(tokens):
     return ''.join(VOCAB[t] if t < len(VOCAB) else ' ' for t in tokens)
 
-# 500+ EXAMPLES
+# 500+ DEFAULT EXAMPLES
 def get_default_data():
     base = [
         f"hello i am {ROBOT_NAME}",
@@ -37,12 +37,10 @@ def get_default_data():
         "backprop is truth",
         "loss must drop",
         "i learn fast",
-        "gpt from scratch",
-        "no pytorch no tensorflow",
-        "pure numpy ai"
+        "gpt from scratch"
     ]
     data = []
-    for s in base * 30:
+    for s in base * 35:
         t = tokenize(s)
         if len(t) < 2: continue
         t = t[:SEQ_LEN]
@@ -89,7 +87,7 @@ class GPT:
         seq_len = min(len(tokens), SEQ_LEN)
         emb = np.array([self.W_emb[t] for t in tokens[:seq_len]], dtype=np.float32)
         pos = self.W_pos[:seq_len]
-        x = emb + pos  # (seq_len, dim)
+        x = emb + pos
 
         q = x @ self.W_q
         k = x @ self.W_k
@@ -98,7 +96,7 @@ class GPT:
         scores = scores - np.max(scores, axis=-1, keepdims=True)
         attn = np.exp(scores)
         attn = attn / (attn.sum(axis=-1, keepdims=True) + 1e-8)
-        out = attn @ v  # (seq_len, dim)
+        out = attn @ v
         out = out @ self.W_o
         logits = out[-1] @ self.W_out
         return logits, (x, q, k, v, attn, out)
@@ -119,9 +117,9 @@ def train_model(data):
     progress = st.progress(0)
     losses = []
 
-    for step in range(800):  # More training
+    for step in range(800):
         batch_loss = 0
-        for _ in range(12):  # More updates
+        for _ in range(12):
             i = np.random.randint(len(data))
             seq, target = data[i]
             if not seq: continue
@@ -129,18 +127,59 @@ def train_model(data):
             logits, cache = model.forward(seq)
             x, q, k, v, attn, out = cache
 
-            # Softmax + loss
+            # Softmax
             probs = np.exp(logits - np.max(logits))
             probs /= (probs.sum() + 1e-8)
             loss = -np.log(probs[target] + 1e-10)
             batch_loss += loss
 
-            # === FULL BACKPROP ===
+            # === FULL BACKPROP (ONE LINE EACH) ===
             grad = probs.copy(); grad[target] -= 1
+            dW_out = np.outer(out[-1], grad); model.W_out -= LEARNING_RATE * dW_out
+            dout = grad @ model.W_out.T; dout = dout.reshape(1, -1)
+            dW_o = out.T @ dout; model.W_o -= LEARNING_RATE * dW_o
+            dv = (attn.T @ dout).squeeze(1)
+            dattn = dout @ v.T
+            dattn -= attn * dattn.sum(axis=1, keepdims=True)
+            dscores = dattn * attn
+            dq = dscores @ k; dk = dscores.T @ q
+            model.W_q -= LEARNING_RATE * (x.T @ dq)
+            model.W_k -= LEARNING_RATE * (x.T @ dk)
+            model.W_v -= LEARNING_RATE * (x.T @ dv)
+            dx = dq @ model.W_q.T + dk @ model.W_k.T + dv @ model.W_v.T
+            for j, t in enumerate(seq):
+                if j < SEQ_LEN:
+                    model.W_emb[t] -= LEARNING_RATE * dx[j]
+                    model.W_pos[j] -= LEARNING_RATE * dx[j]
 
-            # W_out
-            dW_out = np.outer(out[-1], grad)
-            model.W_out -= LEARNING_RATE * dW_out
+        losses.append(batch_loss / 12)
+        progress.progress(step / 800)
+        if step % 100 == 0:
+            st.write(f"**Step {step} → Loss: {losses[-1]:.3f}**")
 
-            # W_o
-            dout =
+    return model, losses
+
+# ==================== UI ====================
+st.title(f"{ROBOT_NAME}'s GPT – Day 15")
+st.markdown("**SYNTAX ERROR FIXED + FULL BACKPROP + ENGLISH**")
+
+uploaded_file = st.file_uploader("Upload my_corpus.txt (optional)", type="txt")
+
+if st.button("TRAIN MY AI NOW"):
+    data = get_data(uploaded_file)
+    with st.spinner("Training 800 steps..."):
+        model, loss_curve = train_model(data)
+        st.session_state.model = model
+        st.session_state.loss_curve = loss_curve
+    st.success("TRAINING COMPLETE!")
+    st.line_chart(loss_curve)
+
+if st.session_state.get('model'):
+    st.markdown("---")
+    prompt = st.text_input("**Enter your prompt:**", "hello i am", key="prompt")
+    if st.button("GENERATE", key="gen"):
+        with st.spinner("Thinking..."):
+            result = st.session_state.model.generate(prompt, 40)
+        st.markdown(f"### **AI says:**\n**{result}**")
+else:
+    st.info("Click **TRAIN MY AI NOW**")
