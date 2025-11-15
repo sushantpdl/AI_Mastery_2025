@@ -1,4 +1,4 @@
-# DAY 15 – 100% ENGLISH OUTPUT GUARANTEED
+# DAY 15 – FULL UI + INPUT BOX + GENERATE
 import streamlit as st
 import numpy as np
 import re
@@ -19,7 +19,7 @@ def tokenize(text):
 def detokenize(tokens):
     return ''.join(VOCAB[t] if t < len(VOCAB) else ' ' for t in tokens)
 
-# ==================== HARD-CODED DATA (ALWAYS WORKS) ====================
+# DEFAULT DATA (ALWAYS WORKS)
 def get_default_data():
     sentences = [
         f"hello i am {ROBOT_NAME}",
@@ -28,10 +28,7 @@ def get_default_data():
         "i love truth",
         "day 15 i train gpt",
         "no cheat no mercy",
-        "i am invincible",
-        "ali one will win",
-        "attention is all you need",
-        "python is power"
+        "i am invincible"
     ]
     data = []
     for s in sentences:
@@ -42,15 +39,12 @@ def get_default_data():
             data.append((t[:i], t[i]))
     return data
 
-# ==================== FILE + DEFAULT FALLBACK ====================
+# FILE + DEFAULT FALLBACK
 def get_data(uploaded_file):
     if uploaded_file:
-        try:
-            text = uploaded_file.read().decode("utf-8", errors="ignore")
-            lines = [l.strip() for l in text.split('\n') if l.strip()]
-            st.write(f"**File loaded: {len(lines)} lines**")
-        except:
-            lines = []
+        text = uploaded_file.read().decode("utf-8", errors="ignore")
+        lines = [l.strip() for l in text.split('\n') if l.strip()]
+        st.write(f"**File: {len(lines)} lines**")
     else:
         lines = []
 
@@ -62,15 +56,13 @@ def get_data(uploaded_file):
         for i in range(1, len(t)):
             data.append((t[:i], t[i]))
 
-    # FALLBACK TO DEFAULT IF NO DATA
-    if len(data) == 0:
-        st.warning("No valid data from file → using default")
+    if not data:
+        st.warning("No data from file → using default")
         data = get_default_data()
-
     st.write(f"**Training on {len(data)} examples**")
     return data
 
-# ==================== MODEL ====================
+# MODEL
 class GPT:
     def __init__(self):
         self.W_emb = np.random.randn(VOCAB_SIZE, EMBED_DIM).astype(np.float32) * 0.1
@@ -107,7 +99,7 @@ class GPT:
             if len(tokens) > SEQ_LEN: tokens = tokens[-SEQ_LEN:]
         return detokenize(tokens)
 
-# ==================== TRAINING ====================
+# TRAINING
 def train_model(data):
     model = GPT()
     progress = st.progress(0)
@@ -131,12 +123,14 @@ def train_model(data):
             st.write(f"Step {step} → Loss: {losses[-1]:.3f}")
     return model, losses
 
-# ==================== UI ====================
+# ==================== FULL UI ====================
 st.title(f"{ROBOT_NAME}'s GPT – Day 15")
-st.write("**NO GIBBERISH. AI SPEAKS ENGLISH 100%**")
+st.markdown("**Train from file or default → Type prompt → Generate**")
 
+# FILE UPLOAD
 uploaded_file = st.file_uploader("Upload my_corpus.txt (optional)", type="txt")
 
+# TRAIN BUTTON
 if st.button("TRAIN MY AI NOW"):
     data = get_data(uploaded_file)
     with st.spinner("Training..."):
@@ -146,5 +140,13 @@ if st.button("TRAIN MY AI NOW"):
     st.success("TRAINING COMPLETE!")
     st.line_chart(loss_curve)
 
+# INPUT + GENERATE (ONLY AFTER TRAINING)
 if st.session_state.get('model'):
-    prompt = st
+    st.markdown("---")
+    prompt = st.text_input("**Enter your prompt:**", "hello i am", key="prompt_input")
+    if st.button("GENERATE", key="generate_btn"):
+        with st.spinner("Thinking..."):
+            result = st.session_state.model.generate(prompt, 20)
+        st.markdown(f"### **AI says:**\n{result}")
+else:
+    st.info("Click **TRAIN MY AI NOW** first")
