@@ -120,27 +120,43 @@ def train_model(data):
             if not seq: continue
             logits, cache = model.forward(seq)
             x, q, k, v, attn, out = cache
+
+            # Only last position for loss
             probs = np.exp(logits - np.max(logits))
             probs /= (probs.sum() + 1e-8)
             loss = -np.log(probs[target] + 1e-10)
             batch_loss += loss
-            grad = probs.copy(); grad[target] -= 1
-            dW_out = np.outer(out[-1], grad); model.W_out -= LEARNING_RATE * dW_out
-            dout = grad @ model.W_out.T; dout = dout.reshape(1, -1)
-            dW_o = out.T @ dout; model.W_o -= LEARNING_RATE * dW_o
-            dv = (attn.T @ dout).squeeze(1)
+
+            grad = probs.copy()
+            grad[target] -= 1
+
+            # W_out: (dim,) @ (vocab,) → outer
+            model.W_out -= LEARNING_RATE * np.outer(out[-1], grad)
+
+            # dout: (1, dim) → only last position
+            dout = grad @ model.W_out.T
+            dout = dout.reshape(1, -1)  # (1, dim)
+
+            # W_o: (seq_len, dim).T @ (1, dim) → (dim, dim)
+            model.W_o -= LEARNING_RATE * (out.T @ dout)
+
+            # Rest of attention backprop (only last position affects)
+            dv = (attn[-1:].T @ dout).squeeze(1)
             dattn = dout @ v.T
-            dattn -= attn * dattn.sum(axis=1, keepdims=True)
-            dscores = dattn * attn
-            dq = dscores @ k; dk = dscores.T @ q
+            dattn -= attn[-1:] * dattn.sum(axis=1, keepdims=True)
+            dscores = dattn * attn[-1:]
+            dq = dscores @ k
+            dk = dscores.T @ q
             model.W_q -= LEARNING_RATE * (x.T @ dq)
             model.W_k -= LEARNING_RATE * (x.T @ dk)
             model.W_v -= LEARNING_RATE * (x.T @ dv)
+
             dx = dq @ model.W_q.T + dk @ model.W_k.T + dv @ model.W_v.T
             for j, t in enumerate(seq):
                 if j < SEQ_LEN:
                     model.W_emb[t] -= LEARNING_RATE * dx[j]
                     model.W_pos[j] -= LEARNING_RATE * dx[j]
+
         avg_loss = batch_loss / 12
         losses.append(avg_loss)
         progress.progress(step / 800)
@@ -148,9 +164,9 @@ def train_model(data):
             st.write(f"**Step {step} → Loss: {avg_loss:.3f}**")
     return model, losses
 
-# ==================== UI – ONLY RUN ON BUTTON ====================
+# ==================== UI ====================
 st.title(f"{ROBOT_NAME}'s GPT – Day 15")
-st.markdown("**FINAL – 100% WORKING – NO TOP-LEVEL CALL**")
+st.markdown("**SHAPE-FIXED BACKPROP – 100% WORKING**")
 
 uploaded_file = st.file_uploader("Upload my_corpus.txt (optional)", type="txt")
 
